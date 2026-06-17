@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Калибровка · Прогулка по Пушкинской</title>
+<style>
+  body{font-family:Georgia,serif;background:#f3ece1;color:#23201b;max-width:640px;margin:0 auto;padding:20px;line-height:1.5}
+  h1{font-size:24px} h2{font-size:18px;margin-top:18px}
+  select,button,input{font-size:15px;padding:10px;border-radius:8px;border:1px solid #d8ccb8}
+  button{background:#a9762f;color:#fff;border:none;cursor:pointer}
+  .row{display:flex;gap:10px;align-items:center;margin:12px 0;flex-wrap:wrap}
+  .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .thumbs img{width:80px;height:106px;object-fit:cover;border-radius:6px;border:1px solid #d8ccb8}
+  .note{font-size:13px;color:#6f675a}
+  canvas{display:none}
+  .ok{color:#2a6b2f}
+</style>
+</head>
+<body>
+<h1>Калибровка распознавания</h1>
+<p class="note">
+  Для каждого объекта добавьте 3–5 ваших фотографий с разных ракурсов (Задание 2).
+  Инструмент вычислит цветовую сигнатуру и сохранит её — после этого приложение
+  сможет узнавать объект по камере (Задание 3). Военные объекты не фотографируйте.
+</p>
+
+<div class="row">
+  <label>Объект:</label>
+  <select id="siteSel"></select>
+</div>
+<div class="row">
+  <input type="file" id="files" accept="image/*" multiple capture="environment" />
+  <button onclick="processFiles()">Добавить фото</button>
+</div>
+<div class="thumbs" id="thumbs"></div>
+<div class="row">
+  <button onclick="saveSig()">Сохранить сигнатуру объекта</button>
+  <span id="status" class="note"></span>
+</div>
+
+<canvas id="cv"></canvas>
+
+<script>
+const BINS=4;
+let sites=[], collected=[]; // collected = array of histograms for current site
+
+async function load(){
+  const r=await fetch('/api/sites'); sites=await r.json();
+  document.getElementById('siteSel').innerHTML=sites.map(s=>
+    `<option value="${s.id}">${s.name}${s.hasSignature?' ✓':''}</option>`).join('');
+}
+load();
+
+document.getElementById('siteSel').addEventListener('change',()=>{
+  collected=[]; document.getElementById('thumbs').innerHTML=''; setStatus('');
+});
+
+function histFromCanvas(cv){
+  const ctx=cv.getContext('2d'); const d=ctx.getImageData(0,0,cv.width,cv.height).data;
+  const h=new Array(BINS*BINS*BINS).fill(0); let n=0;
+  for(let i=0;i<d.length;i+=4){ if(d[i+3]<16)continue;
+    h[(d[i]>>6)*BINS*BINS+(d[i+1]>>6)*BINS+(d[i+2]>>6)]++; n++; }
+  if(n)for(let i=0;i<h.length;i++)h[i]/=n; return h;
+}
+
+function processFiles(){
+  const files=[...document.getElementById('files').files];
+  if(!files.length){ alert('Выберите фотографии.'); return; }
+  const cv=document.getElementById('cv'); cv.width=240; cv.height=320;
+  const ctx=cv.getContext('2d');
+  let done=0;
+  files.forEach(f=>{
+    const img=new Image();
+    img.onload=()=>{
+      ctx.drawImage(img,0,0,cv.width,cv.height);
+      collected.push(histFromCanvas(cv));
+      const t=document.createElement('img'); t.src=cv.toDataURL('image/jpeg',0.5);
+      document.getElementById('thumbs').appendChild(t);
+      done++; setStatus(done+' фото обработано, всего сигнатур: '+collected.length);
+    };
+    img.src=URL.createObjectURL(f);
+  });
+}
+
+function average(hists){
+  if(!hists.length)return null;
+  const out=new Array(hists[0].length).fill(0);
+  for(const h of hists)for(let i=0;i<h.length;i++)out[i]+=h[i];
+  for(let i=0;i<out.length;i++)out[i]/=hists.length; return out;
+}
+
+async function saveSig(){
+  if(!collected.length){ alert('Сначала добавьте фото.'); return; }
+  const id=document.getElementById('siteSel').value;
+  const colorSignature=average(collected);
+  const r=await fetch('/api/calibrate',{ method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ id, colorSignature }) });
+  const data=await r.json();
+  setStatus('Сохранено ✓ Объектов калибровано: '+data.calibrated, true);
+  load();
+}
+function setStatus(t,ok){ const s=document.getElementById('status'); s.textContent=t; s.className=ok?'ok':'note'; }
+</script>
+</body>
+</html>

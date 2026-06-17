@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Прогулка по Пушкинской</title>
+<style>
+  /* Visual identity: a 19th-century boulevard in print — warm paper, ink, and a
+     single brass accent drawn from the street's lanterns and bronze sculptures.
+     Display face evokes Cyrillic book typography; body stays quiet. */
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant:wght@500;600;700&family=PT+Serif:ital@0;1&display=swap');
+  :root{
+    --paper:#f3ece1; --ink:#23201b; --muted:#6f675a;
+    --brass:#a9762f; --brass-deep:#7c5520; --line:#d8ccb8; --card:#fbf7ef;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:'PT Serif',Georgia,serif;line-height:1.5}
+  .wrap{max-width:640px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+
+  header{padding:22px 20px 14px;border-bottom:1px solid var(--line)}
+  .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--brass-deep);font-family:'PT Serif'}
+  h1{font-family:'Cormorant',serif;font-weight:700;font-size:34px;line-height:1.02;margin-top:4px;letter-spacing:.01em}
+  header p{color:var(--muted);font-size:14px;margin-top:6px;font-style:italic}
+
+  nav{display:flex;gap:0;border-bottom:1px solid var(--line)}
+  nav button{flex:1;background:none;border:none;padding:13px 8px;font-family:'PT Serif';font-size:14px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent}
+  nav button.active{color:var(--ink);border-bottom-color:var(--brass)}
+
+  main{flex:1;padding:18px 20px 40px}
+  .hidden{display:none}
+
+  /* Camera screen */
+  #video,#snap{width:100%;border-radius:10px;background:#000;aspect-ratio:3/4;object-fit:cover;border:1px solid var(--line)}
+  .controls{display:flex;gap:10px;margin-top:12px}
+  button.act{flex:1;background:var(--brass);color:#fff;border:none;padding:13px;border-radius:9px;font-family:'PT Serif';font-size:15px;cursor:pointer}
+  button.act.ghost{background:none;color:var(--brass-deep);border:1px solid var(--brass)}
+  button.act:disabled{opacity:.5}
+  .hint{font-size:13px;color:var(--muted);margin-top:10px;font-style:italic}
+  .gpsline{font-size:12px;color:var(--muted);margin-top:8px}
+
+  /* Result */
+  .result{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:11px;padding:18px;position:relative}
+  .result .conf{position:absolute;top:14px;right:16px;font-size:12px;color:var(--brass-deep);font-family:'Cormorant';font-weight:600}
+  .result .kind{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--brass-deep)}
+  .result h2{font-family:'Cormorant';font-weight:700;font-size:25px;line-height:1.05;margin:5px 0 2px}
+  .result .meta{font-size:13px;color:var(--muted);margin-bottom:10px}
+  .result .body{font-size:15px}
+  .alts{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+  .alts h4{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .alt{display:flex;justify-content:space-between;padding:7px 0;font-size:14px;cursor:pointer;border-bottom:1px dotted var(--line)}
+  .alt:hover{color:var(--brass-deep)}
+
+  /* Catalogue */
+  .site{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:16px;margin-bottom:12px;cursor:pointer}
+  .site .kind{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--brass-deep)}
+  .site h3{font-family:'Cormorant';font-weight:600;font-size:21px;margin:3px 0}
+  .site .meta{font-size:13px;color:var(--muted)}
+  .site .preview{font-size:14px;color:var(--ink);margin-top:8px;max-height:0;overflow:hidden;transition:max-height .3s}
+  .site.open .preview{max-height:900px}
+
+  /* Photo galleries */
+  .gallery{display:flex;gap:8px;overflow-x:auto;margin:10px 0 2px;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+  .gallery img{height:150px;width:auto;border-radius:8px;border:1px solid var(--line);object-fit:cover;flex:0 0 auto}
+  .gallery.small img{height:96px}
+  .nophoto{font-size:12px;color:var(--muted);font-style:italic;margin:8px 0}
+
+  footer{padding:16px 20px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);text-align:center}
+  a{color:var(--brass-deep)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Ростов-на-Дону · с 1885 года</div>
+    <h1>Прогулка по Пушкинской</h1>
+    <p>Наведите камеру на здание или памятник — и узнайте его историю</p>
+  </header>
+
+  <nav>
+    <button id="navCam" class="active" onclick="showTab('cam')">Камера</button>
+    <button id="navList" onclick="showTab('list')">Все объекты</button>
+    <button id="navMap" onclick="showTab('map')">О маршруте</button>
+  </nav>
+
+  <main>
+    <!-- CAMERA / IDENTIFY -->
+    <section id="tab-cam">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="snap" class="hidden"></canvas>
+      <div class="controls">
+        <button class="act" id="btnStart" onclick="startCamera()">Включить камеру</button>
+        <button class="act" id="btnShot" onclick="identify()" disabled>Определить</button>
+      </div>
+      <div class="gpsline" id="gpsline">Геолокация: не запрошена</div>
+      <p class="hint">Совет: снимайте фасад целиком при дневном свете. Геолокация ускоряет определение.</p>
+      <div id="resultBox"></div>
+    </section>
+
+    <!-- CATALOGUE -->
+    <section id="tab-list" class="hidden"></section>
+
+    <!-- ABOUT -->
+    <section id="tab-map" class="hidden">
+      <div class="result">
+        <div class="kind">О маршруте</div>
+        <h2>Пушкинская улица</h2>
+        <p class="body">
+          Пушкинская (до 1885 года — Кузнецкая) — бульварная улица в центре Ростова-на-Дону,
+          протяжённостью около 3,5 км, средоточие архитектурных памятников конца XIX —
+          начала XX веков. С пересечения с проспектом Чехова улица становится пешеходной.
+          В приложении собраны исторические здания и памятники улицы. Военные объекты
+          в подборку не включены.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer>Источники: открытые краеведческие материалы о Пушкинской улице. Учебный проект.</footer>
+</div>
+
+<script>
+const API = '';
+let stream = null, lastPos = null;
+
+// ---------- tabs ----------
+function showTab(t){
+  ['cam','list','map'].forEach(x=>{
+    document.getElementById('tab-'+x).classList.toggle('hidden', x!==t);
+  });
+  document.getElementById('navCam').classList.toggle('active', t==='cam');
+  document.getElementById('navList').classList.toggle('active', t==='list');
+  document.getElementById('navMap').classList.toggle('active', t==='map');
+  if(t==='list') loadCatalogue();
+}
+
+// ---------- geolocation ----------
+function requestGps(){
+  if(!navigator.geolocation){ document.getElementById('gpsline').textContent='Геолокация недоступна'; return; }
+  navigator.geolocation.getCurrentPosition(
+    p=>{ lastPos={lat:p.coords.latitude,lng:p.coords.longitude};
+         document.getElementById('gpsline').textContent =
+           'Геолокация: '+lastPos.lat.toFixed(5)+', '+lastPos.lng.toFixed(5); },
+    ()=>{ document.getElementById('gpsline').textContent='Геолокация: отклонена (определение по фото)'; },
+    { enableHighAccuracy:true, timeout:8000 }
+  );
+}
+
+// ---------- camera ----------
+async function startCamera(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' }, audio:false });
+    const v=document.getElementById('video'); v.srcObject=stream;
+    document.getElementById('btnShot').disabled=false;
+    document.getElementById('btnStart').textContent='Камера включена';
+    requestGps();
+  }catch(e){
+    alert('Не удалось открыть камеру. Разрешите доступ к камере в браузере.');
+  }
+}
+
+// Build the same kind of color histogram the server stores (must match BINS=4).
+function histogramFromCanvas(canvas){
+  const ctx=canvas.getContext('2d');
+  const {width,height}=canvas;
+  const data=ctx.getImageData(0,0,width,height).data;
+  const BINS=4, hist=new Array(BINS*BINS*BINS).fill(0); let count=0;
+  for(let i=0;i<data.length;i+=4){
+    if(data[i+3]<16) continue;
+    const r=data[i]>>6, g=data[i+1]>>6, b=data[i+2]>>6;
+    hist[r*BINS*BINS+g*BINS+b]++; count++;
+  }
+  if(count) for(let i=0;i<hist.length;i++) hist[i]/=count;
+  return hist;
+}
+
+// ---------- identify ----------
+async function identify(){
+  const v=document.getElementById('video'), c=document.getElementById('snap');
+  if(!v.videoWidth){ alert('Сначала включите камеру.'); return; }
+  c.width=240; c.height=320;                       // downscale for a fast, robust signature
+  c.getContext('2d').drawImage(v,0,0,c.width,c.height);
+  const histogram=histogramFromCanvas(c);
+
+  document.getElementById('resultBox').innerHTML='<p class="hint">Определяем…</p>';
+  const r=await fetch(API+'/api/identify',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ lat:lastPos?.lat, lng:lastPos?.lng, histogram })
+  });
+  const data=await r.json();
+  renderResult(data);
+}
+
+function renderResult(data){
+  const box=document.getElementById('resultBox');
+  if(!data.best){ box.innerHTML='<p class="hint">Объект не найден. Подойдите ближе или включите геолокацию.</p>'; return; }
+  const b=data.best;
+  const conf=Math.round(b.confidence*100);
+  const dist=b.distanceMeters!=null?(' · '+b.distanceMeters+' м'):'';
+  const alts=data.candidates.slice(1,4).map(a=>
+    `<div class="alt" onclick="openSite('${a.id}')"><span>${a.name}</span>
+     <span>${Math.round(a.confidence*100)}%</span></div>`).join('');
+  const gallery=(b.images&&b.images.length)
+    ? `<div class="gallery">${b.images.map(src=>`<img src="${src}" alt="${b.name}">`).join('')}</div>`
+    : '';
+  box.innerHTML=
+    `<div class="result">
+       <div class="conf">${conf}% уверенности</div>
+       <div class="kind">${b.type==='monument'?'Памятник':'Здание'}${dist}</div>
+       <h2>${b.name}</h2>
+       <div class="meta">${b.address} · ${b.year}${b.authors?(' · '+b.authors):''}</div>
+       ${gallery}
+       <div class="body">${b.text}</div>
+       ${alts?`<div class="alts"><h4>Возможно, это:</h4>${alts}</div>`:''}
+     </div>`;
+}
+
+// ---------- catalogue ----------
+let catalogue=[];
+async function loadCatalogue(){
+  if(catalogue.length) return;
+  const r=await fetch(API+'/api/sites'); catalogue=await r.json();
+  document.getElementById('tab-list').innerHTML=catalogue.map(s=>{
+    const gallery=(s.images&&s.images.length)
+      ? `<div class="gallery small">${s.images.map(src=>`<img src="${src}" alt="${s.name}">`).join('')}</div>`
+      : `<div class="nophoto">Фото будут добавлены после съёмки на месте</div>`;
+    return `<div class="site" id="site-${s.id}" onclick="toggleSite('${s.id}')">
+       <div class="kind">${s.type==='monument'?'Памятник':'Здание'}</div>
+       <h3>${s.name}</h3>
+       <div class="meta">${s.address} · ${s.year}</div>
+       <div class="preview">${gallery}${s.text}</div>
+     </div>`;}).join('');
+}
+function toggleSite(id){ document.getElementById('site-'+id).classList.toggle('open'); }
+function openSite(id){ showTab('list'); setTimeout(()=>{ const el=document.getElementById('site-'+id);
+  el.classList.add('open'); el.scrollIntoView({behavior:'smooth',block:'center'}); },100); }
+
+// stop camera when leaving page
+window.addEventListener('pagehide',()=>{ if(stream) stream.getTracks().forEach(t=>t.stop()); });
+</script>
+</body>
+</html>
