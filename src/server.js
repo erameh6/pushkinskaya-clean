@@ -43,7 +43,8 @@ function imagesForSite(id) {
 app.get('/api/sites', (req, res) => {
   res.json(SITES.map(s => ({
     id: s.id, name: s.name, nameEn: s.nameEn, type: s.type,
-    address: s.address, year: s.year, authors: s.authors, text: s.text,
+    address: s.address, addressEn: s.addressEn, year: s.year,
+    authors: s.authors, authorsEn: s.authorsEn, text: s.text, textEn: s.textEn,
     lat: s.lat, lng: s.lng, hasSignature: !!s.colorSignature,
     images: imagesForSite(s.id)
   })));
@@ -64,12 +65,14 @@ app.get('/api/sites/:id', (req, res) => {
 // Returns a ranked list with confidence so the UI can show the best guess.
 // -------------------------------------------------------------------------
 app.post('/api/identify', (req, res) => {
-  const { lat, lng, histogram } = req.body || {};
+  const { lat, lng, histogram, mode } = req.body || {};
+  // mode: 'auto' (default, blends GPS+image), 'image' (ignore GPS), 'gps' (ignore image)
 
   let candidates = SITES.map(s => ({ site: s, gpsMeters: null, imageScore: null }));
 
-  // Step 1: GPS narrowing
-  if (typeof lat === 'number' && typeof lng === 'number') {
+  // Step 1: GPS narrowing — skipped in image-only mode
+  const useGps = mode !== 'image' && typeof lat === 'number' && typeof lng === 'number';
+  if (useGps) {
     candidates.forEach(c => { c.gpsMeters = metersBetween(lat, lng, c.site.lat, c.site.lng); });
     candidates.sort((a, b) => a.gpsMeters - b.gpsMeters);
     // keep sites within 150 m; if none, keep nearest 3 as a fallback
@@ -77,8 +80,9 @@ app.post('/api/identify', (req, res) => {
     candidates = near.length ? near : candidates.slice(0, 3);
   }
 
-  // Step 2: image signature ranking
-  if (Array.isArray(histogram)) {
+  // Step 2: image signature ranking — skipped in gps-only mode
+  const useImage = mode !== 'gps' && Array.isArray(histogram);
+  if (useImage) {
     candidates.forEach(c => {
       c.imageScore = c.site.colorSignature ? similarity(histogram, c.site.colorSignature) : null;
     });
@@ -99,7 +103,8 @@ app.post('/api/identify', (req, res) => {
     }
     return {
       id: c.site.id, name: c.site.name, nameEn: c.site.nameEn, type: c.site.type,
-      address: c.site.address, year: c.site.year, authors: c.site.authors, text: c.site.text,
+      address: c.site.address, addressEn: c.site.addressEn, year: c.site.year,
+      authors: c.site.authors, authorsEn: c.site.authorsEn, text: c.site.text, textEn: c.site.textEn,
       images: imagesForSite(c.site.id),
       distanceMeters: c.gpsMeters != null ? Math.round(c.gpsMeters) : null,
       imageScore: c.imageScore != null ? Number(c.imageScore.toFixed(3)) : null,
