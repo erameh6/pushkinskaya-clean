@@ -55,12 +55,6 @@ The app identifies a site two ways, combined into one confidence score:
   Bhattacharyya coefficient. It's lightweight, runs on any phone, needs no GPU or large
   model, and is fully explainable — which matters for a defence.
 
-This is an honest, defensible design. It is **not** a deep neural network: that would
-require hundreds of labelled photos per building that only you can take on-site, and is
-overkill for a practicum. The histogram + GPS approach is how many real city-guide apps
-actually work, and you can extend it to a CNN later if asked (the data pipeline — your
-photos via the calibration tool — is already the hard part).
-
 ## What only YOU can do (on-site work)
 
 Two assignment tasks require you to physically be on Pushkinskaya Street — I cannot do
