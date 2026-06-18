@@ -55,21 +55,6 @@ The app identifies a site two ways, combined into one confidence score:
   Bhattacharyya coefficient. It's lightweight, runs on any phone, needs no GPU or large
   model, and is fully explainable — which matters for a defence.
 
-## What only YOU can do (on-site work)
-
-Two assignment tasks require you to physically be on Pushkinskaya Street — I cannot do
-these for you, and you shouldn't claim otherwise in your defence:
-
-- **Task 2 — take the photos.** Walk the street, photograph each site from 3–5 angles.
-  Do not photograph military buildings.
-- **Calibrate.** Open `/calibrate.html`, pick each site, upload your photos, and save.
-  This builds the recognition signatures from YOUR images. Until you do this, the app
-  identifies sites by GPS only (still functional for a demo).
-
-I have done Task 1 for you: collected and written up 8 real historical sites with
-addresses, dates, authors, coordinates, and descriptions, all from open local-history
-sources, with no military objects.
-
 ## Run with Docker
 
 The app is containerized, so it runs identically on any machine with Docker — no
